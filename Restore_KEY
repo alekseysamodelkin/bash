@@ -1,0 +1,63 @@
+#!/bin/bash
+##############################
+#Переменные
+##############################
+#Изменяемые переменные
+file_dir="/data1/smb/soft/ПО/1_Прикладное/Keepass/Db/"
+backup_dir=$file_dir"backup/"
+DB_file=$file_dir"Database"
+file_ext=".kdbx"
+log_file=$file_dir"log.txt"
+DB_backup_file=$backup_dir"DB_backup"
+error_log_file=$file_dir"error.txt"
+##############################
+#Функции
+##############################
+#Функция логирования
+LogMsg(){
+        echo "$(date +"%d-%m-%Y %T") "$1 >> $log_file
+}
+#Функция логисрования ошибок
+ErrorMsg(){
+        echo "$(date +"%d-%m-%Y %T") "$1 >> $error_log_file
+}
+# функция копирования БД
+copydb(){
+        cp $DB_file$file_ext $DB_backup_file"_$(date +"%d-%m-%Y_%H-%M-%S")"$file_ext
+        LogMsg "Резервная копия БД создана. DB_backup_$(date +"%d-%m-%Y_%H-%M-%S")"$file_ext
+}
+#Восстановление
+restoring(){
+if [ -d $backup_dir ] && [ `find $backup_dir -type f | wc -l` -ne 0 ]
+then
+        newest_file=$(ls $backup_dir -t | head -1)
+        cp $backup_dir$newest_file $DB_file$file_ext
+        LogMsg "Файл "$newest_file" восстановлен"
+else
+        ErrorMsg "Файл БД не найден. Резервная копия не найдена"
+        LogMsg "Создан отчет об ошибке."
+fi
+}
+##############################
+#Тело скрипта
+##############################
+cd $file_dir
+if [ ! -f $DB_file$file_ext ]
+then
+        LogMsg "Файл БД не найден. Запуск восстановления"
+        restoring
+        echo " " >> $log_file
+else
+        if [ ! -d $backup_dir ]
+        then
+                mkdir $backup_dir
+                copydb
+                ErrorMsg "Резервные копии не найдены. Резервное копирование выполнено"
+        else
+                if [ `find $backup_dir -type f | wc -l` = 0 ]
+                then
+			copydb
+                        ErrorMsg "Резервные копии не найдены. Резервное копирование выполнено"
+                fi
+        fi
+fi
